@@ -62,10 +62,15 @@ d3.json("dados_biologicos.json").then(function (data) {
         return { hierarchy, proteins, smilesList, smilesToProteins }; // Retornar a hierarquia e as listas de proteínas e SMILES
     }
 
-    function highlightConnections(d, type) {
-        console.log("Highlighting connections for:", d, "Type:", type);
+    function sanitizeSmiles(smiles) {
+        return smiles.replace(/[\\/*?:"<>|]/g, '_');
+    }
 
-        // Verificar se é uma proteína
+
+    // Função para destacar conexões ao passar o mouse
+    function highlightConnections(d, type, event) {
+        //console.log("Highlighting connections for:", d, "Type:", type);
+
         if (type === "protein") {
             let connectedLinks = links.filter(link => link.source.name === d);
 
@@ -80,13 +85,11 @@ d3.json("dados_biologicos.json").then(function (data) {
                     return l.source.name === d ? 0.7 : 0.1;
                 });
 
-            // Alterar a cor dos círculos e textos das proteínas conectadas
             d3.selectAll(".protein-node circle")
                 .style("fill", function (protein) {
                     return connectedLinks.some(link => link.source.name === protein) ? "yellow" : "blue";
                 });
 
-            // Alterar a cor dos SMILES conectados
             d3.selectAll(".smiles-node circle")
                 .style("fill", function (smiles) {
                     return connectedLinks.some(link => link.target.name === smiles) ? "yellow" : "red";
@@ -106,45 +109,68 @@ d3.json("dados_biologicos.json").then(function (data) {
                     return l.target.name === d ? 0.7 : 0.2;
                 });
 
-            // Alterar a cor dos SMILES conectados
             d3.selectAll(".smiles-node circle")
                 .style("fill", function (smiles) {
                     return connectedLinks.some(link => link.target.name === smiles) ? "yellow" : "red";
                 });
 
-            
-
-            // Alterar a cor dos círculos e textos das proteínas conectadas
             d3.selectAll(".protein-node circle")
                 .style("fill", function (protein) {
                     return connectedLinks.some(link => link.source.name === protein) ? "yellow" : "blue";
                 });
-
-            
         }
     }
 
+    // Função para exibir a imagem ao clicar
+    function showImageOnClick(d) {
+        //console.log("Click on SMILES:", d); // Log ao clicar no SMILES
+
+        let smileSanitizado = sanitizeSmiles(d)
+        //console.log(smileSanitizado)
+
+        // Exibir a imagem do SMILES
+        const imagePath = `imagens/${smileSanitizado}.png`;  // Caminho da imagem com o nome do SMILES
+        const imageContainer = document.getElementById("smiles-image-container");
+        const imageElement = document.getElementById("smiles-image");
+
+        imageElement.src = imagePath;
+        imageContainer.style.display = "block";
+
+        // Ajustar a posição do container centralizado no topo da tela
+        d3.select("#smiles-image-container")
+            .style("left", "50%")  // Centraliza horizontalmente
+            .style("top", "10px")  // Define a distância do topo da tela
+            .style("transform", "translateX(-50%)");  // Garante que a centralização seja exata
+
+        // Ajustar a imagem dentro do container
+        d3.select("#smiles-image")
+            .style("border", "0.1rem solid black")  // Adiciona uma borda preta à imagem
+            .style("width", "8rem")  // Define a largura da imagem
+            .style("height", "auto");  // Mantém a proporção original da altura
+
+
+
+    }
 
     // Função para remover o destaque ao sair do nó
     function removeHighlight() {
-        console.log("Mouse out");
+        //console.log("Mouse out");
 
-        // Restaurar a cor padrão dos links
         d3.selectAll(".link")
             .style("stroke-opacity", 0.4)
-            .style("stroke", "green")  // Cor padrão para os links
+            .style("stroke", "green")
             .style("stroke-width", 1.5);
 
-        // Restaurar a cor padrão dos nós de SMILES
         d3.selectAll(".smiles-node circle")
             .style("fill", "red");
 
-        // Restaurar a cor padrão dos nós de proteínas
         d3.selectAll(".protein-node circle")
             .style("fill", "blue");
+
+        // Esconder a imagem
+        const imageContainer = document.getElementById("smiles-image-container");
+        imageContainer.style.display = "none";
     }
-
-
 
     // Configuração do gráfico
     const width = 3000;
@@ -175,7 +201,7 @@ d3.json("dados_biologicos.json").then(function (data) {
 
     // Criar os links e armazenar os dados na variável global `links`
     links = createLinksData(hierarchy);
-    console.log(links)
+    //console.log(links)
     // Função para criar os nós das proteínas
     function createProteinNodes() {
         const proteinGroup = svgGroup.append("g")
@@ -190,7 +216,7 @@ d3.json("dados_biologicos.json").then(function (data) {
                 return `translate(${x},${y})`;
             })
             .on("mouseover", function (event, d) {
-                console.log("Mouse over protein:", d); // Log ao passar o mouse sobre a proteína
+                //console.log("Mouse over protein:", d); // Log ao passar o mouse sobre a proteína
                 highlightConnections(d, "protein"); // Destacar as conexões para a proteína
             })
             .on("mouseout", removeHighlight);  // Remover o destaque ao sair do nó
@@ -229,8 +255,11 @@ d3.json("dados_biologicos.json").then(function (data) {
                 return `translate(${x},${y})`;
             })
             .on("mouseover", function (event, d) {
-                console.log("Mouse over SMILES:", d); // Log ao passar o mouse sobre o SMILES
-                highlightConnections(d, "smiles"); // Destacar as conexões para o SMILE
+                //console.log("Mouse over SMILES:", d); // Log ao passar o mouse sobre o SMILES
+                highlightConnections(d, "smiles", event); // Destacar as conexões para o SMILE
+            })
+            .on("click", function (event, d) {
+                showImageOnClick(d); // Exibir a imagem ao clicar no SMILE
             })
             .on("mouseout", removeHighlight);  // Remover o destaque ao sair do nó
 
